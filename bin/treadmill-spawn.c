@@ -129,7 +129,7 @@ int open_uds(launch_settings *settings)
 static
 void read_manifest_to_file(launch_settings *settings)
 {
-    size_t tmppath_size = 4 + strlen(settings->id) + 7;
+    size_t tmppath_size = strlen(settings->dir) + 5 + strlen(settings->id) + 6;
     size_t finalpath_size = strlen(settings->dir) + strlen(settings->id) + 6;
     char buffer[FILE_READ_LENGTH];
     char tmppath[tmppath_size];
@@ -137,8 +137,9 @@ void read_manifest_to_file(launch_settings *settings)
     FILE *out;
     int ret;
 
-    // write to .instance.yml first then rename to instance.yml
-    snprintf(tmppath, tmppath_size, "/tmp/.%s.yml", settings->id);
+    // write to .tmp/instance.yml first then rename to instance.yml
+    snprintf(tmppath, tmppath_size, "%s/.tmp/%s.yml", settings->dir,
+             settings->id);
 
     if (settings->debug)
         log_debug(settings->id, "Writing manifest to '%s'.", tmppath);
@@ -185,7 +186,12 @@ void read_manifest_to_file(launch_settings *settings)
                   finalpath);
 
     if (rename(tmppath, finalpath) == -1)
-        ERR_EXIT(settings->id, "rename(%s, %s)", tmppath, finalpath);
+    {
+        int errno_tmp = errno;
+        unlink(tmppath); // cleanup tmp file left over
+        _err_exit(settings->id, __FILE__, __LINE__, errno_tmp,
+                  "rename(%s, %s)", tmppath, finalpath);
+    }
 }
 
 static
